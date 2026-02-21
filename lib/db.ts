@@ -5,8 +5,8 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // Add SSL parameters to DATABASE_URL if not present (for Railway/production)
-let databaseUrl = process.env.DATABASE_URL;
-if (databaseUrl && process.env.NODE_ENV === 'production' && !databaseUrl.includes('sslmode')) {
+let databaseUrl = process.env.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy';
+if (databaseUrl && process.env.NODE_ENV === 'production' && !databaseUrl.includes('sslmode') && !databaseUrl.includes('dummy')) {
   databaseUrl += databaseUrl.includes('?') ? '&' : '?';
   databaseUrl += 'sslmode=require';
 }
