@@ -6,21 +6,26 @@ const globalForRedis = globalThis as unknown as {
 
 // Support both REDIS_URL (single connection string) and individual variables
 const redisUrl = process.env.REDIS_URL;
-const redisConfig = redisUrl 
-  ? redisUrl 
-  : {
+
+export const redis = globalForRedis.redis ?? (redisUrl 
+  ? new Redis(redisUrl, {
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      },
+    })
+  : new Redis({
       host: process.env.REDIS_HOST || 'redis',
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD || undefined,
-    };
-
-export const redis = globalForRedis.redis ?? new Redis(redisConfig, {
-  maxRetriesPerRequest: 3,
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-});
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      },
+    })
+);
 
 if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis;
 
