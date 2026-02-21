@@ -503,3 +503,35 @@ button:disabled {
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
+
+/* User Stats Badges */
+.user-stats {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.stat-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.stat-badge.completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.stat-badge.skipped {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.stat-badge.total {
+  background: #d1ecf1;
+  color: #0c5460;
+}
