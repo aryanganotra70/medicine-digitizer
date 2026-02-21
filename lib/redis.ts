@@ -7,6 +7,7 @@ const globalForRedis = globalThis as unknown as {
 export const redis = globalForRedis.redis ?? new Redis({
   host: process.env.REDIS_HOST || 'redis',
   port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || undefined,
   maxRetriesPerRequest: 3,
   retryStrategy: (times) => {
     const delay = Math.min(times * 50, 2000);
