@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  
+  digitizations MedicineEntry[]
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  createdAt   DateTime @default(now())
+  createdBy   String
+  
+  entries     MedicineEntry[]
+  
+  @@index([createdAt])
+}
+
+model MedicineEntry {
+  id              String   @id @default(cuid())
+  projectId       String
+  medicineName    String
+  originalImageUrl String
+  status          EntryStatus @default(PENDING)
+  selectedImages  String[]
+  processedImages String[]
+  assignedTo      String?
+  digitizedBy     String?
+  failureReason   String?
+  retryCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user            User?    @relation(fields: [digitizedBy], references: [id])
+  
+  @@index([projectId, status])
+  @@index([medicineName])
+  @@index([assignedTo])
+}
+
+enum EntryStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  FAILED
+}
