@@ -1,23 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { redis } from '@/lib/redis';
-
-// Rate limiting: max 10 requests per minute globally
-const RATE_LIMIT_KEY = 'google-images:rate-limit';
-const MAX_REQUESTS_PER_MINUTE = 10;
-
-async function checkRateLimit(): Promise<boolean> {
-  try {
-    const current = await redis.incr(RATE_LIMIT_KEY);
-    if (current === 1) {
-      await redis.expire(RATE_LIMIT_KEY, 60); // 60 seconds
-    }
-    return current <= MAX_REQUESTS_PER_MINUTE;
-  } catch (error) {
-    console.error('Rate limit check failed:', error);
-    return true; // Allow request if Redis fails
-  }
-}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -28,21 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Query required' }, { status: 400 });
   }
 
-  // Check rate limit
-  const allowed = await checkRateLimit();
-  if (!allowed) {
-    return NextResponse.json({ 
-      error: 'Rate limit exceeded. Please wait a moment.',
-      images: [],
-      hasMore: false 
-    }, { status: 429 });
-  }
-
   try {
-    // Add random delay between 1-3 seconds to appear more human-like
-    const delay = Math.floor(Math.random() * 2000) + 1000;
-    await new Promise(resolve => setTimeout(resolve, delay));
-
     const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=isch&hl=en&start=${start}`;
     
     const response = await axios.get(searchUrl, {
@@ -50,9 +18,7 @@ export async function GET(request: NextRequest) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
-        'Referer': 'https://www.google.com/',
       },
-      timeout: 10000,
     });
 
     const images: any[] = [];
