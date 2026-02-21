@@ -7,6 +7,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [leaderboards, setLeaderboards] = useState<{ [key: string]: any[] }>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -28,6 +29,16 @@ export default function ProjectsPage() {
     const res = await fetch('/api/projects');
     const data = await res.json();
     setProjects(data.projects || []);
+    
+    // Fetch leaderboard for each project
+    (data.projects || []).forEach(async (project: any) => {
+      const leaderboardRes = await fetch(`/api/projects/${project.id}/leaderboard`);
+      const leaderboardData = await leaderboardRes.json();
+      setLeaderboards(prev => ({
+        ...prev,
+        [project.id]: leaderboardData.leaderboard || [],
+      }));
+    });
   };
 
   const handleLogout = async () => {
@@ -107,6 +118,23 @@ export default function ProjectsPage() {
                 <span className="stat-value">{project.stats.failed}</span>
               </div>
             </div>
+
+            {/* Leaderboard */}
+            {leaderboards[project.id] && leaderboards[project.id].length > 0 && (
+              <div className="leaderboard">
+                <h4>🏆 Top Contributors</h4>
+                <div className="leaderboard-list">
+                  {leaderboards[project.id].map((contributor, index) => (
+                    <div key={index} className={`leaderboard-item rank-${index + 1}`}>
+                      <span className="rank">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}</span>
+                      <span className="username">{contributor.username}</span>
+                      <span className="count">{contributor.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="project-actions">
               <button onClick={() => router.push(`/digitize/${project.id}`)}>
                 Start Digitizing
