@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyAuth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
-  const user = await verifyAuth(request);
+  const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Get total completed by this user
     const completed = await prisma.medicineEntry.count({
       where: {
-        digitizedBy: user.id,
+        digitizedBy: user.userId,
         status: 'COMPLETED',
       },
     });
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Get total skipped by this user
     const skipped = await prisma.medicineEntry.count({
       where: {
-        digitizedBy: user.id,
+        digitizedBy: user.userId,
         status: 'SKIPPED',
       },
     });
