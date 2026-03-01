@@ -62,4 +62,5 @@ enum EntryStatus {
   COMPLETED
   SKIPPED
   FAILED
+  ARCHIVED
 }

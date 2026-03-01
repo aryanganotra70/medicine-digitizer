@@ -30,13 +30,14 @@ export async function GET() {
     const completed = project.entries.filter((e) => e.status === 'COMPLETED').length;
     const skipped = project.entries.filter((e) => e.status === 'SKIPPED').length;
     const failed = project.entries.filter((e) => e.status === 'FAILED').length;
-    const pending = total - completed - skipped - failed;
+    const archived = project.entries.filter((e) => e.status === 'ARCHIVED').length;
+    const pending = total - completed - skipped - failed - archived;
 
     return {
       id: project.id,
       name: project.name,
       createdAt: project.createdAt,
-      stats: { total, completed, skipped, failed, pending },
+      stats: { total, completed, skipped, failed, archived, pending },
     };
   });
 

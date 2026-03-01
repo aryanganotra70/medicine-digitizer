@@ -108,6 +108,15 @@ export default function DigitizePage() {
     fetchNextEntry();
   };
 
+  const handleArchive = async () => {
+    if (!confirm('Archive this entry? This means it cannot be digitized and will be excluded from future processing.')) {
+      return;
+    }
+
+    await fetch(`/api/entries/${entry.id}/archive`, { method: 'POST' });
+    fetchNextEntry();
+  };
+
   if (loading || !entry) {
     return <div className="loading">Loading...</div>;
   }
@@ -132,6 +141,7 @@ export default function DigitizePage() {
             <option value="PENDING">Pending Only</option>
             <option value="SKIPPED">Skipped Only</option>
             <option value="FAILED">Failed Only</option>
+            <option value="ARCHIVED">Archived Only</option>
             <option value="ALL">All Statuses</option>
           </select>
         </div>
@@ -211,6 +221,9 @@ export default function DigitizePage() {
       <div className="digitize-actions">
         <button onClick={handleSkip} className="btn-skip">
           Skip
+        </button>
+        <button onClick={handleArchive} className="btn-archive">
+          Archive
         </button>
         <button onClick={handleComplete} className="btn-next">
           Next

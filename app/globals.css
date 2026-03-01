@@ -652,3 +652,36 @@ button:disabled {
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
+
+/* Archive Button */
+.btn-archive {
+  padding: 1rem 2rem;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-archive:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+/* Archived Stat */
+.stat.archived {
+  background: #f8f9fa;
+  border-left: 4px solid #6c757d;
+}
+
+.stat.archived .stat-label {
+  color: #6c757d;
+}
+
+.stat.archived .stat-value {
+  color: #495057;
+}

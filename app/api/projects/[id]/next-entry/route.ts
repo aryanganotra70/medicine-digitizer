@@ -23,7 +23,7 @@ export async function POST(
     };
 
     if (statusFilter === 'ALL') {
-      // For ALL, get entries that are not COMPLETED
+      // For ALL, get entries that are not COMPLETED or ARCHIVED
       whereClause.status = {
         in: ['PENDING', 'SKIPPED', 'FAILED'],
       };

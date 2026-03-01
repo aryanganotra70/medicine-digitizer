@@ -117,6 +117,10 @@ export default function ProjectsPage() {
                 <span className="stat-label">Failed:</span>
                 <span className="stat-value">{project.stats.failed}</span>
               </div>
+              <div className="stat archived">
+                <span className="stat-label">Archived:</span>
+                <span className="stat-value">{project.stats.archived}</span>
+              </div>
             </div>
 
             {/* Leaderboard */}
