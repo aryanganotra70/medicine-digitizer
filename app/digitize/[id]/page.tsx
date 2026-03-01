@@ -14,24 +14,36 @@ export default function DigitizePage() {
   const [hasMore, setHasMore] = useState(false);
   const [nextStart, setNextStart] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>('PENDING');
-  const [remainingCount, setRemainingCount] = useState<number>(0);
+  const [statusCounts, setStatusCounts] = useState<{ [key: string]: number }>({
+    PENDING: 0,
+    SKIPPED: 0,
+    FAILED: 0,
+    ARCHIVED: 0,
+    ALL: 0,
+  });
   const router = useRouter();
 
   useEffect(() => {
     fetchNextEntry();
+    fetchAllStatusCounts();
   }, []);
 
-  useEffect(() => {
-    fetchRemainingCount();
-  }, [statusFilter]);
-
-  const fetchRemainingCount = async () => {
+  const fetchAllStatusCounts = async () => {
     try {
-      const res = await fetch(`/api/projects/${id}/remaining?status=${statusFilter}`);
-      const data = await res.json();
-      setRemainingCount(data.count || 0);
+      const statuses = ['PENDING', 'SKIPPED', 'FAILED', 'ARCHIVED', 'ALL'];
+      const counts: { [key: string]: number } = {};
+      
+      await Promise.all(
+        statuses.map(async (status) => {
+          const res = await fetch(`/api/projects/${id}/remaining?status=${status}`);
+          const data = await res.json();
+          counts[status] = data.count || 0;
+        })
+      );
+      
+      setStatusCounts(counts);
     } catch (error) {
-      console.error('Failed to fetch remaining count');
+      console.error('Failed to fetch status counts');
     }
   };
 
@@ -52,7 +64,7 @@ export default function DigitizePage() {
       setGoogleImages([]);
       setHasMore(false);
       fetchGoogleImages(data.entry.medicineName);
-      fetchRemainingCount(); // Update count after getting entry
+      fetchAllStatusCounts(); // Update all counts after getting entry
     } catch (error) {
       alert('Failed to fetch entry');
     } finally {
@@ -133,11 +145,11 @@ export default function DigitizePage() {
               setTimeout(() => fetchNextEntry(), 100);
             }}
           >
-            <option value="PENDING">Pending ({remainingCount} remaining)</option>
-            <option value="SKIPPED">Skipped ({remainingCount} remaining)</option>
-            <option value="FAILED">Failed ({remainingCount} remaining)</option>
-            <option value="ARCHIVED">Archived ({remainingCount} remaining)</option>
-            <option value="ALL">All ({remainingCount} remaining)</option>
+            <option value="PENDING">Pending ({statusCounts.PENDING} remaining)</option>
+            <option value="SKIPPED">Skipped ({statusCounts.SKIPPED} remaining)</option>
+            <option value="FAILED">Failed ({statusCounts.FAILED} remaining)</option>
+            <option value="ARCHIVED">Archived ({statusCounts.ARCHIVED} remaining)</option>
+            <option value="ALL">All ({statusCounts.ALL} remaining)</option>
           </select>
         </div>
       </header>
