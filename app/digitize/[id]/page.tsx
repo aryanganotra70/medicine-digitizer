@@ -108,10 +108,6 @@ export default function DigitizePage() {
   };
 
   const handleArchive = async () => {
-    if (!confirm('Archive this entry? This means it cannot be digitized and will be excluded from future processing.')) {
-      return;
-    }
-
     await fetch(`/api/entries/${entry.id}/archive`, { method: 'POST' });
     fetchNextEntry();
   };
