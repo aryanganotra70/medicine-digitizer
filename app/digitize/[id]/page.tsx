@@ -13,22 +13,25 @@ export default function DigitizePage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [nextStart, setNextStart] = useState(0);
-  const [userStats, setUserStats] = useState({ completed: 0, skipped: 0, total: 0 });
   const [statusFilter, setStatusFilter] = useState<string>('PENDING');
+  const [remainingCount, setRemainingCount] = useState<number>(0);
   const router = useRouter();
 
   useEffect(() => {
     fetchNextEntry();
-    fetchUserStats();
   }, []);
 
-  const fetchUserStats = async () => {
+  useEffect(() => {
+    fetchRemainingCount();
+  }, [statusFilter]);
+
+  const fetchRemainingCount = async () => {
     try {
-      const res = await fetch('/api/users/stats');
+      const res = await fetch(`/api/projects/${id}/remaining?status=${statusFilter}`);
       const data = await res.json();
-      setUserStats(data);
+      setRemainingCount(data.count || 0);
     } catch (error) {
-      console.error('Failed to fetch user stats');
+      console.error('Failed to fetch remaining count');
     }
   };
 
@@ -49,6 +52,7 @@ export default function DigitizePage() {
       setGoogleImages([]);
       setHasMore(false);
       fetchGoogleImages(data.entry.medicineName);
+      fetchRemainingCount(); // Update count after getting entry
     } catch (error) {
       alert('Failed to fetch entry');
     } finally {
@@ -95,16 +99,11 @@ export default function DigitizePage() {
       body: JSON.stringify({ selectedImages: selectedUrls }),
     });
 
-    // Update stats
-    setUserStats(prev => ({ ...prev, completed: prev.completed + 1, total: prev.total + 1 }));
     fetchNextEntry();
   };
 
   const handleSkip = async () => {
     await fetch(`/api/entries/${entry.id}/skip`, { method: 'POST' });
-    
-    // Update stats
-    setUserStats(prev => ({ ...prev, skipped: prev.skipped + 1, total: prev.total + 1 }));
     fetchNextEntry();
   };
 
@@ -127,7 +126,7 @@ export default function DigitizePage() {
         <button onClick={() => router.push('/projects')}>← Back to Projects</button>
         <h2>{entry.medicineName}</h2>
         
-        {/* Status Filter */}
+        {/* Status Filter with Remaining Count */}
         <div className="status-filter">
           <label>Show:</label>
           <select 
@@ -138,18 +137,12 @@ export default function DigitizePage() {
               setTimeout(() => fetchNextEntry(), 100);
             }}
           >
-            <option value="PENDING">Pending Only</option>
-            <option value="SKIPPED">Skipped Only</option>
-            <option value="FAILED">Failed Only</option>
-            <option value="ARCHIVED">Archived Only</option>
-            <option value="ALL">All Statuses</option>
+            <option value="PENDING">Pending ({remainingCount} remaining)</option>
+            <option value="SKIPPED">Skipped ({remainingCount} remaining)</option>
+            <option value="FAILED">Failed ({remainingCount} remaining)</option>
+            <option value="ARCHIVED">Archived ({remainingCount} remaining)</option>
+            <option value="ALL">All ({remainingCount} remaining)</option>
           </select>
-        </div>
-
-        <div className="user-stats">
-          <span className="stat-badge completed">✓ {userStats.completed} Completed</span>
-          <span className="stat-badge skipped">⊘ {userStats.skipped} Skipped</span>
-          <span className="stat-badge total">Total: {userStats.total}</span>
         </div>
       </header>
 
