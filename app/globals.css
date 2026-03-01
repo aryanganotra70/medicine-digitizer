@@ -614,3 +614,41 @@ button:disabled {
   min-width: 3rem;
   text-align: center;
 }
+
+/* Status Filter */
+.status-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-filter label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.status-filter select {
+  padding: 0.5rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-filter select:hover {
+  border-color: #667eea;
+}
+
+.status-filter select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}

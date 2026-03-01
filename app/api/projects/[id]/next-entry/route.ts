@@ -13,31 +13,43 @@ export async function POST(
   }
 
   const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const statusFilter = searchParams.get('status') || 'PENDING';
 
   try {
-    // Find next available entry that is:
-    // 1. PENDING status
-    // 2. Not locked in Redis
-    const pendingEntries = await prisma.medicineEntry.findMany({
-      where: {
-        projectId: id,
-        status: 'PENDING',
-      },
+    // Build where clause based on status filter
+    let whereClause: any = {
+      projectId: id,
+    };
+
+    if (statusFilter === 'ALL') {
+      // For ALL, get entries that are not COMPLETED
+      whereClause.status = {
+        in: ['PENDING', 'SKIPPED', 'FAILED'],
+      };
+    } else {
+      // For specific status
+      whereClause.status = statusFilter;
+    }
+
+    // Find next available entry
+    const entries = await prisma.medicineEntry.findMany({
+      where: whereClause,
       orderBy: { createdAt: 'asc' },
       take: 50, // Check first 50 to find unlocked one
     });
 
-    console.log(`Found ${pendingEntries.length} PENDING entries for project ${id}`);
+    console.log(`Found ${entries.length} ${statusFilter} entries for project ${id}`);
 
-    if (pendingEntries.length === 0) {
-      return NextResponse.json({ entry: null, message: 'No more entries' });
+    if (entries.length === 0) {
+      return NextResponse.json({ entry: null, message: `No more ${statusFilter.toLowerCase()} entries` });
     }
 
     // Find first entry that's not locked
     let selectedEntry = null;
     let lockedCount = 0;
     
-    for (const entry of pendingEntries) {
+    for (const entry of entries) {
       const isLocked = await isEntryLocked(entry.id);
       if (isLocked) {
         lockedCount++;
@@ -54,12 +66,12 @@ export async function POST(
       }
     }
 
-    console.log(`Checked ${pendingEntries.length} entries, ${lockedCount} were locked`);
+    console.log(`Checked ${entries.length} entries, ${lockedCount} were locked`);
 
     if (!selectedEntry) {
       return NextResponse.json({ 
         entry: null, 
-        message: `All ${pendingEntries.length} pending entries are currently locked by other users. Please try again in a moment.` 
+        message: `All ${entries.length} ${statusFilter.toLowerCase()} entries are currently locked by other users. Please try again in a moment.` 
       });
     }
 

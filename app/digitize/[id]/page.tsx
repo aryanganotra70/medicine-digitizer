@@ -14,6 +14,7 @@ export default function DigitizePage() {
   const [hasMore, setHasMore] = useState(false);
   const [nextStart, setNextStart] = useState(0);
   const [userStats, setUserStats] = useState({ completed: 0, skipped: 0, total: 0 });
+  const [statusFilter, setStatusFilter] = useState<string>('PENDING');
   const router = useRouter();
 
   useEffect(() => {
@@ -34,11 +35,11 @@ export default function DigitizePage() {
   const fetchNextEntry = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/projects/${id}/next-entry`, { method: 'POST' });
+      const res = await fetch(`/api/projects/${id}/next-entry?status=${statusFilter}`, { method: 'POST' });
       const data = await res.json();
 
       if (!data.entry) {
-        alert(data.message || 'No more entries to process!');
+        alert(data.message || `No more ${statusFilter.toLowerCase()} entries to process!`);
         router.push('/projects');
         return;
       }
@@ -116,6 +117,25 @@ export default function DigitizePage() {
       <header className="digitize-header">
         <button onClick={() => router.push('/projects')}>← Back to Projects</button>
         <h2>{entry.medicineName}</h2>
+        
+        {/* Status Filter */}
+        <div className="status-filter">
+          <label>Show:</label>
+          <select 
+            value={statusFilter} 
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              // Fetch new entry with selected filter
+              setTimeout(() => fetchNextEntry(), 100);
+            }}
+          >
+            <option value="PENDING">Pending Only</option>
+            <option value="SKIPPED">Skipped Only</option>
+            <option value="FAILED">Failed Only</option>
+            <option value="ALL">All Statuses</option>
+          </select>
+        </div>
+
         <div className="user-stats">
           <span className="stat-badge completed">✓ {userStats.completed} Completed</span>
           <span className="stat-badge skipped">⊘ {userStats.skipped} Skipped</span>
