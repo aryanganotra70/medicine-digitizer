@@ -24,9 +24,16 @@ export default function DigitizePage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetchNextEntry();
-    fetchAllStatusCounts();
+    initializePage();
   }, []);
+
+  const initializePage = async () => {
+    // First fetch all counts
+    await fetchAllStatusCounts();
+    
+    // Then fetch entry with current filter
+    fetchNextEntry();
+  };
 
   const fetchAllStatusCounts = async () => {
     try {
@@ -54,8 +61,9 @@ export default function DigitizePage() {
       const data = await res.json();
 
       if (!data.entry) {
-        alert(data.message || `No more ${statusFilter.toLowerCase()} entries to process!`);
-        router.push('/projects');
+        alert(data.message || `No more ${statusFilter.toLowerCase()} entries to process! Try selecting a different filter.`);
+        setEntry(null);
+        setLoading(false);
         return;
       }
 
@@ -67,6 +75,7 @@ export default function DigitizePage() {
       fetchAllStatusCounts(); // Update all counts after getting entry
     } catch (error) {
       alert('Failed to fetch entry');
+      setEntry(null);
     } finally {
       setLoading(false);
     }
@@ -124,8 +133,42 @@ export default function DigitizePage() {
     fetchNextEntry();
   };
 
-  if (loading || !entry) {
+  if (loading) {
     return <div className="loading">Loading...</div>;
+  }
+
+  if (!entry) {
+    return (
+      <div className="digitize-page">
+        <header className="digitize-header">
+          <button onClick={() => router.push('/projects')}>← Back to Projects</button>
+          <h2>No Entries Available</h2>
+          
+          {/* Status Filter with Remaining Count */}
+          <div className="status-filter">
+            <label>Show:</label>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                // Fetch new entry with selected filter
+                setTimeout(() => fetchNextEntry(), 100);
+              }}
+            >
+              <option value="PENDING">Pending ({statusCounts.PENDING} remaining)</option>
+              <option value="SKIPPED">Skipped ({statusCounts.SKIPPED} remaining)</option>
+              <option value="FAILED">Failed ({statusCounts.FAILED} remaining)</option>
+              <option value="ARCHIVED">Archived ({statusCounts.ARCHIVED} remaining)</option>
+              <option value="ALL">All ({statusCounts.ALL} remaining)</option>
+            </select>
+          </div>
+        </header>
+        <div style={{ textAlign: 'center', padding: '4rem', fontSize: '1.2rem', color: '#666' }}>
+          <p>No {statusFilter.toLowerCase()} entries available.</p>
+          <p>Try selecting a different filter above.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
