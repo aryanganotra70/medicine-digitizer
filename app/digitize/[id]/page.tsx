@@ -61,7 +61,7 @@ export default function DigitizePage() {
       const data = await res.json();
 
       if (!data.entry) {
-        alert(data.message || `No more ${statusFilter.toLowerCase()} entries to process! Try selecting a different filter.`);
+        // No alert popup - just show the no-entry UI
         setEntry(null);
         setLoading(false);
         return;
@@ -74,7 +74,7 @@ export default function DigitizePage() {
       fetchGoogleImages(data.entry.medicineName);
       fetchAllStatusCounts(); // Update all counts after getting entry
     } catch (error) {
-      alert('Failed to fetch entry');
+      console.error('Failed to fetch entry:', error);
       setEntry(null);
     } finally {
       setLoading(false);

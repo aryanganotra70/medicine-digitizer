@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { lockEntry, isEntryLocked } from '@/lib/redis';
+import { lockEntry, isEntryLocked, unlockEntry } from '@/lib/redis';
 
 export async function POST(
   request: NextRequest,
@@ -45,11 +45,29 @@ export async function POST(
       return NextResponse.json({ entry: null, message: `No more ${statusFilter.toLowerCase()} entries` });
     }
 
-    // Find first entry that's not locked
+    // For SKIPPED, FAILED, ARCHIVED - clear any old locks since they're being reworked
+    if (['SKIPPED', 'FAILED', 'ARCHIVED'].includes(statusFilter)) {
+      console.log(`Clearing old locks for ${statusFilter} entries`);
+      for (const entry of entries) {
+        await unlockEntry(entry.id);
+      }
+    }
+
+    // Find first entry that's not locked (or just take first one for non-PENDING)
     let selectedEntry = null;
     let lockedCount = 0;
     
     for (const entry of entries) {
+      // For non-PENDING statuses, we already cleared locks, so just take the first one
+      if (['SKIPPED', 'FAILED', 'ARCHIVED'].includes(statusFilter)) {
+        selectedEntry = entry;
+        // Acquire new lock
+        await lockEntry(entry.id, user.userId, 600);
+        console.log(`Lock acquired for ${statusFilter} entry ${entry.id} by user ${user.userId}`);
+        break;
+      }
+      
+      // For PENDING and ALL, check locks normally
       const isLocked = await isEntryLocked(entry.id);
       if (isLocked) {
         lockedCount++;
