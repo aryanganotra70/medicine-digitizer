@@ -10,67 +10,89 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Query required' }, { status: 400 });
   }
 
+  const dataForSeoLogin = process.env.DATAFORSEO_LOGIN;
+  const dataForSeoPassword = process.env.DATAFORSEO_PASSWORD;
+
+  // Try DataForSEO if credentials are available
+  if (dataForSeoLogin && dataForSeoPassword) {
+    try {
+      const auth = Buffer.from(`${dataForSeoLogin}:${dataForSeoPassword}`).toString('base64');
+      
+      const postData = [{
+        keyword: query,
+        location_code: 2840, // United States
+        language_code: 'en',
+        device: 'desktop',
+        os: 'windows',
+        depth: Math.min(start + 100, 700), // Max 700 results
+      }];
+
+      const response = await axios.post(
+        'https://api.dataforseo.com/v3/serp/google/images/live/advanced',
+        postData,
+        {
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.tasks && response.data.tasks[0]?.result) {
+        const items = response.data.tasks[0].result[0]?.items || [];
+        
+        // Slice based on pagination
+        const paginatedItems = items.slice(start, start + 30);
+        
+        const images = paginatedItems
+          .filter((item: any) => item.type === 'images_search')
+          .map((item: any) => ({
+            url: item.source_url || item.encoded_url,
+            thumbnail: item.thumbnail || item.source_url,
+            title: item.title || query,
+          }));
+
+        console.log(`Found ${images.length} images for query: ${query} (start: ${start}) via DataForSEO`);
+
+        return NextResponse.json({
+          images,
+          hasMore: items.length > start + 30,
+          nextStart: start + 30,
+        });
+      }
+    } catch (error: any) {
+      console.error('DataForSEO error:', error?.response?.data || error.message);
+      // Fall through to Unsplash fallback
+    }
+  }
+
+  // Fallback to Unsplash if no DataForSEO credentials or if it fails
   try {
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=isch&hl=en&start=${start}`;
-    
-    const response = await axios.get(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
+    const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
+    const response = await axios.get('https://api.unsplash.com/search/photos', {
+      params: {
+        query: query,
+        per_page: 30,
+        page: Math.floor(start / 30) + 1,
+        client_id: unsplashKey || 'demo',
       },
     });
 
-    const images: any[] = [];
-    
-    // Extract all image URLs from the HTML using multiple patterns
-    const urlPatterns = [
-      /"(https?:\/\/[^"]*\.(?:jpg|jpeg|png|webp|gif)[^"]*)"/gi,
-      /\["(https?:\/\/encrypted-tbn\d\.gstatic\.com\/images[^"]+)"/gi,
-    ];
+    const images = (response.data.results || []).map((item: any) => ({
+      url: item.urls.regular,
+      thumbnail: item.urls.thumb,
+      title: item.alt_description || query,
+    }));
 
-    // Blacklist of URLs to filter out
-    const blacklist = [
-      'ssl.gstatic.com/gb/images',
-      'gstatic.com/images/branding',
-      'gstatic.com/images/icons',
-      '/logo',
-      '/icon',
-      'data:image',
-    ];
+    console.log(`Found ${images.length} images for query: ${query} (start: ${start}) via Unsplash fallback`);
 
-    urlPatterns.forEach(pattern => {
-      const matches = response.data.matchAll(pattern);
-      for (const match of matches) {
-        const url = match[1];
-        
-        // Filter out invalid images
-        const isBlacklisted = blacklist.some(bl => url.includes(bl));
-        const isDuplicate = images.find(img => img.url === url);
-        const isTooShort = url.length < 50; // Very short URLs are usually icons
-        
-        if (url && url.startsWith('http') && !isBlacklisted && !isDuplicate && !isTooShort) {
-          images.push({
-            url: url,
-            thumbnail: url,
-            title: query,
-          });
-        }
-      }
-    });
-
-    console.log(`Found ${images.length} images for query: ${query} (start: ${start})`);
-
-    // Return up to 30 images per request
-    const uniqueImages = images.slice(0, 30);
-
-    return NextResponse.json({ 
-      images: uniqueImages,
+    return NextResponse.json({
+      images,
       hasMore: images.length >= 30,
       nextStart: start + 30,
     });
   } catch (error) {
-    console.error('Scraping error:', error);
+    console.error('Image search error:', error);
     return NextResponse.json({ error: 'Failed to fetch images', images: [], hasMore: false }, { status: 200 });
   }
 }
