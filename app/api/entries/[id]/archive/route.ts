@@ -15,12 +15,13 @@ export async function POST(
   const { id } = await params;
 
   try {
-    // Update entry status to ARCHIVED
+    // Update entry status to ARCHIVED and set default image
     await prisma.medicineEntry.update({
       where: { id },
       data: {
         status: 'ARCHIVED',
         digitizedBy: user.userId,
+        processedImages: ['/medicineimage.png'],
         updatedAt: new Date(),
       },
     });
