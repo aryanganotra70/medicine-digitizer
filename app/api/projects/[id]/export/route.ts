@@ -15,17 +15,19 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // Get all COMPLETED entries
+    // Get all COMPLETED and ARCHIVED entries
     const entries = await prisma.medicineEntry.findMany({
       where: {
         projectId: id,
-        status: 'COMPLETED',
+        status: {
+          in: ['COMPLETED', 'ARCHIVED'],
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
 
     if (entries.length === 0) {
-      return NextResponse.json({ error: 'No completed entries to export' }, { status: 404 });
+      return NextResponse.json({ error: 'No completed or archived entries to export' }, { status: 404 });
     }
 
     // Find the maximum number of images across all entries
