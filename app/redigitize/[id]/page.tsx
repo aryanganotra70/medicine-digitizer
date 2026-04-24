@@ -13,6 +13,7 @@ export default function RedigitizePage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [nextStart, setNextStart] = useState(0);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -50,12 +51,22 @@ export default function RedigitizePage() {
     setNextStart(data.nextStart || 0);
   };
 
+  const handleManualSearch = async () => {
+    if (!searchQuery.trim()) {
+      alert('Please enter a search query');
+      return;
+    }
+    setGoogleImages([]);
+    await fetchGoogleImages(searchQuery);
+  };
+
   const loadMoreImages = async () => {
     if (!entry || loadingMore) return;
     
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/google-images?q=${encodeURIComponent(entry.medicineName)}&start=${nextStart}`);
+      const queryToUse = searchQuery.trim() || entry.medicineName;
+      const res = await fetch(`/api/google-images?q=${encodeURIComponent(queryToUse)}&start=${nextStart}`);
       const data = await res.json();
       console.log('More images fetched:', data.images?.length || 0);
       setGoogleImages((prev) => [...prev, ...(data.images || [])]);
@@ -162,6 +173,63 @@ export default function RedigitizePage() {
 
         <div className="right-panel-images">
           <h3>Select Images ({selectedUrls.length} selected)</h3>
+          
+          {/* Manual Search Box */}
+          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="Search for different images..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleManualSearch();
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '0.9rem',
+              }}
+            />
+            <button
+              onClick={handleManualSearch}
+              style={{
+                padding: '0.5rem 1.5rem',
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+              }}
+            >
+              Search
+            </button>
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setGoogleImages([]);
+                  fetchGoogleImages(entry.medicineName);
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          
           <div className="google-images-grid">
             {googleImages.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#666' }}>
