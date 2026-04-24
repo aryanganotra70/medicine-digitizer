@@ -200,7 +200,28 @@ export default function DigitizePage() {
       <div className="digitize-content">
         <div className="left-panel-large">
           <h3>Original Image</h3>
-          <img src={entry.originalImageUrl} alt={entry.medicineName} className="original-large" />
+          <div
+            className={`google-image-item ${selectedUrls.includes(entry.originalImageUrl) ? 'selected' : ''}`}
+            onClick={() => {
+              setSelectedUrls((prev) =>
+                prev.includes(entry.originalImageUrl)
+                  ? prev.filter((u) => u !== entry.originalImageUrl)
+                  : [...prev, entry.originalImageUrl]
+              );
+            }}
+            style={{ cursor: 'pointer', position: 'relative' }}
+          >
+            <img src={entry.originalImageUrl} alt={entry.medicineName} className="original-large" />
+            <input
+              type="checkbox"
+              checked={selectedUrls.includes(entry.originalImageUrl)}
+              onChange={(e) => {
+                e.stopPropagation();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ position: 'absolute', top: '10px', right: '10px', width: '20px', height: '20px', cursor: 'pointer' }}
+            />
+          </div>
         </div>
 
         <div className="right-panel-images">
