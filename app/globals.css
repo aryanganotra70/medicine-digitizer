@@ -175,7 +175,7 @@ body {
 
 .digitize-content {
   display: grid;
-  grid-template-columns: 1.5fr 2fr;
+  grid-template-columns: 1fr 2fr;
   gap: 2rem;
   padding: 2rem;
   flex: 1;
@@ -194,6 +194,7 @@ body {
 .original-large {
   width: 100%;
   height: auto;
+  min-height: 600px;
   max-height: none;
   object-fit: contain;
   border-radius: 8px;
