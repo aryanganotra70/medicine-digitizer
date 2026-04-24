@@ -189,18 +189,33 @@ body {
   gap: 1rem;
   overflow-y: auto;
   overflow-x: hidden;
+  max-height: calc(100vh - 200px);
+}
+
+.left-panel-large .google-image-item {
+  height: auto;
+  min-height: 500px;
+  display: flex;
+  align-items: flex-start;
+  padding: 0;
+}
+
+.left-panel-large .google-image-item img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
 }
 
 .original-large {
   width: 100%;
   height: auto;
-  min-height: 600px;
-  max-height: none;
   object-fit: contain;
   border-radius: 8px;
   border: 2px solid #ddd;
   background: white;
   padding: 0.5rem;
+  display: block;
 }
 
 .right-panel-images {
