@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { redis } from '@/lib/redis';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -8,6 +9,18 @@ export async function GET(request: NextRequest) {
 
   if (!query) {
     return NextResponse.json({ error: 'Query required' }, { status: 400 });
+  }
+
+  // Check cache first (24 hour TTL)
+  const cacheKey = `images:${query}:${start}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log(`Cache hit for query: ${query} (start: ${start})`);
+      return NextResponse.json(JSON.parse(cached as string));
+    }
+  } catch (error) {
+    console.error('Redis cache read error:', error);
   }
 
   const dataForSeoLogin = process.env.DATAFORSEO_LOGIN;
@@ -54,11 +67,20 @@ export async function GET(request: NextRequest) {
 
         console.log(`Found ${images.length} images for query: ${query} (start: ${start}) via DataForSEO India`);
 
-        return NextResponse.json({
+        const result = {
           images,
           hasMore: items.length > start + 30,
           nextStart: start + 30,
-        });
+        };
+
+        // Cache the result for 24 hours
+        try {
+          await redis.setex(cacheKey, 86400, JSON.stringify(result));
+        } catch (error) {
+          console.error('Redis cache write error:', error);
+        }
+
+        return NextResponse.json(result);
       }
     } catch (error: any) {
       console.error('DataForSEO error:', error?.response?.data || error.message);
@@ -86,11 +108,20 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${images.length} images for query: ${query} (start: ${start}) via Unsplash fallback`);
 
-    return NextResponse.json({
+    const result = {
       images,
       hasMore: images.length >= 30,
       nextStart: start + 30,
-    });
+    };
+
+    // Cache fallback results for 1 hour
+    try {
+      await redis.setex(cacheKey, 3600, JSON.stringify(result));
+    } catch (error) {
+      console.error('Redis cache write error:', error);
+    }
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Image search error:', error);
     return NextResponse.json({ error: 'Failed to fetch images', images: [], hasMore: false }, { status: 200 });

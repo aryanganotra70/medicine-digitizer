@@ -81,6 +81,10 @@ export default function DigitizePage() {
       setHasMore(false);
       fetchGoogleImages(data.entry.medicineName);
       fetchAllStatusCounts(); // Update all counts after getting entry
+      
+      // Prefetch images for next entries in background
+      fetch(`/api/projects/${id}/prefetch-next?status=${statusFilter}`, { method: 'POST' })
+        .catch(() => {}); // Ignore errors
     } catch (error) {
       console.error('Failed to fetch entry:', error);
       setEntry(null);
