@@ -20,6 +20,13 @@ export default function RedigitizePage() {
     fetchEntry();
   }, []);
 
+  useEffect(() => {
+    // Autofill search query with medicine name and "buy in India"
+    if (entry) {
+      setSearchQuery(`${entry.medicineName} buy in India`);
+    }
+  }, [entry]);
+
   const fetchEntry = async () => {
     setLoading(true);
     try {

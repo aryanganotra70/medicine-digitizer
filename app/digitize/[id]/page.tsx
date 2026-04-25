@@ -28,6 +28,13 @@ export default function DigitizePage() {
     initializePage();
   }, []);
 
+  useEffect(() => {
+    // Autofill search query with medicine name and "buy in India"
+    if (entry) {
+      setSearchQuery(`${entry.medicineName} buy in India`);
+    }
+  }, [entry]);
+
   const initializePage = async () => {
     // First fetch all counts
     await fetchAllStatusCounts();
