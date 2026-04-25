@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       
       const postData = [{
         keyword: query,
-        location_code: 2840, // United States
+        location_code: 2356, // India
         language_code: 'en',
         device: 'desktop',
         os: 'windows',
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
             title: item.title || query,
           }));
 
-        console.log(`Found ${images.length} images for query: ${query} (start: ${start}) via DataForSEO`);
+        console.log(`Found ${images.length} images for query: ${query} (start: ${start}) via DataForSEO India`);
 
         return NextResponse.json({
           images,
