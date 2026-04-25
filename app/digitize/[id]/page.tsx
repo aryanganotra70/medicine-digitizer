@@ -22,6 +22,7 @@ export default function DigitizePage() {
     ALL: 0,
   });
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isLoadingImages, setIsLoadingImages] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -79,7 +80,8 @@ export default function DigitizePage() {
       setSelectedUrls([]);
       setGoogleImages([]);
       setHasMore(false);
-      fetchGoogleImages(data.entry.medicineName);
+      const searchQuery = `${data.entry.medicineName} buy in India`;
+      fetchGoogleImages(searchQuery);
       fetchAllStatusCounts(); // Update all counts after getting entry
       
       // Prefetch images for next entries in background
@@ -94,12 +96,14 @@ export default function DigitizePage() {
   };
 
   const fetchGoogleImages = async (query: string) => {
+    setIsLoadingImages(true);
     const res = await fetch(`/api/google-images?q=${encodeURIComponent(query)}&start=0`);
     const data = await res.json();
     console.log('Google images fetched:', data.images?.length || 0);
     setGoogleImages(data.images || []);
     setHasMore(data.hasMore || false);
     setNextStart(data.nextStart || 0);
+    setIsLoadingImages(false);
   };
 
   const handleManualSearch = async () => {
@@ -306,7 +310,12 @@ export default function DigitizePage() {
           </div>
           
           <div className="google-images-grid">
-            {googleImages.length === 0 ? (
+            {isLoadingImages ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#666' }}>
+                <div style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>🔍 Searching for images...</div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>This may take a few seconds</div>
+              </div>
+            ) : googleImages.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#666' }}>
                 No images found. Try skipping to the next entry.
               </div>
