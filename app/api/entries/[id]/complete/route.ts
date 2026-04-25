@@ -7,6 +7,8 @@ import { unlockEntry } from '@/lib/redis';
 import { addWatermark } from '@/lib/watermark';
 import path from 'path';
 
+export const maxDuration = 300; // 5 minutes for serverless function
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -34,35 +36,46 @@ async function processImagesInBackground(
   try {
     const entry = await prisma.medicineEntry.findUnique({
       where: { id: entryId },
+      select: { id: true, medicineName: true }, // Only select needed fields
     });
 
     if (!entry) return;
 
     const processedUrls: string[] = [];
 
-    for (let i = 0; i < selectedImages.length; i++) {
-      try {
-        console.log(`Processing image ${i + 1}/${selectedImages.length} for entry ${entryId}`);
-        
-        // Step 1: Download and resize image
-        const processedBuffer = await processImage(selectedImages[i]);
-        
-        // Step 2: Add watermark
-        console.log(`Adding watermark to image ${i + 1}`);
-        const logoPath = path.join(process.cwd(), 'medsright.png');
-        console.log(`Logo path: ${logoPath}`);
-        const watermarkedBuffer = await addWatermark(processedBuffer, logoPath);
-        
-        // Step 3: Upload to R2
-        const key = `${entry.medicineName.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}_${i}.webp`;
-        console.log(`Uploading to R2: ${key}`);
-        const r2Url = await uploadToR2(watermarkedBuffer, key);
-        
-        processedUrls.push(r2Url);
-        console.log(`✓ Successfully processed image ${i + 1}`);
-      } catch (error) {
-        console.error(`✗ Image processing error for image ${i + 1}:`, error);
-      }
+    // Process images in parallel batches of 3 for better performance
+    const batchSize = 3;
+    for (let i = 0; i < selectedImages.length; i += batchSize) {
+      const batch = selectedImages.slice(i, i + batchSize);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (imageUrl, batchIndex) => {
+          const index = i + batchIndex;
+          console.log(`Processing image ${index + 1}/${selectedImages.length} for entry ${entryId}`);
+          
+          // Step 1: Download and resize image
+          const processedBuffer = await processImage(imageUrl);
+          
+          // Step 2: Add watermark
+          const logoPath = path.join(process.cwd(), 'medsright.png');
+          const watermarkedBuffer = await addWatermark(processedBuffer, logoPath);
+          
+          // Step 3: Upload to R2
+          const key = `${entry.medicineName.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}_${index}.webp`;
+          const r2Url = await uploadToR2(watermarkedBuffer, key);
+          
+          console.log(`✓ Successfully processed image ${index + 1}`);
+          return r2Url;
+        })
+      );
+
+      // Collect successful results
+      batchResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          processedUrls.push(result.value);
+        } else {
+          console.error('Image processing error:', result.reason);
+        }
+      });
     }
 
     // Release Redis lock

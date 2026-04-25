@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { lockEntry, isEntryLocked, unlockEntry } from '@/lib/redis';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -32,14 +34,20 @@ export async function POST(
       whereClause.status = statusFilter;
     }
 
-    // Find next available entry
+    // Find next available entry - only select needed fields for performance
     const entries = await prisma.medicineEntry.findMany({
       where: whereClause,
       orderBy: { createdAt: 'asc' },
-      take: 50, // Check first 50 to find unlocked one
+      take: 20, // Reduced from 50 for faster query
+      select: {
+        id: true,
+        medicineName: true,
+        originalImageUrl: true,
+        status: true,
+        createdAt: true,
+        projectId: true,
+      },
     });
-
-    console.log(`Found ${entries.length} ${statusFilter} entries for project ${id}`);
 
     if (entries.length === 0) {
       return NextResponse.json({ entry: null, message: `No more ${statusFilter.toLowerCase()} entries` });
@@ -47,31 +55,24 @@ export async function POST(
 
     // For SKIPPED, FAILED, ARCHIVED - clear any old locks since they're being reworked
     if (['SKIPPED', 'FAILED', 'ARCHIVED'].includes(statusFilter)) {
-      console.log(`Clearing old locks for ${statusFilter} entries`);
-      for (const entry of entries) {
-        await unlockEntry(entry.id);
-      }
+      // Clear locks in parallel for speed
+      await Promise.all(entries.map(entry => unlockEntry(entry.id)));
     }
 
-    // Find first entry that's not locked (or just take first one for non-PENDING)
+    // Find first entry that's not locked
     let selectedEntry = null;
-    let lockedCount = 0;
     
     for (const entry of entries) {
       // For non-PENDING statuses, we already cleared locks, so just take the first one
       if (['SKIPPED', 'FAILED', 'ARCHIVED'].includes(statusFilter)) {
         selectedEntry = entry;
-        // Acquire new lock
         await lockEntry(entry.id, user.userId, 600);
-        console.log(`Lock acquired for ${statusFilter} entry ${entry.id} by user ${user.userId}`);
         break;
       }
       
       // For PENDING and ALL, check locks normally
       const isLocked = await isEntryLocked(entry.id);
       if (isLocked) {
-        lockedCount++;
-        console.log(`Entry ${entry.id} is locked`);
         continue;
       }
       
@@ -79,21 +80,18 @@ export async function POST(
       const lockAcquired = await lockEntry(entry.id, user.userId, 600);
       if (lockAcquired) {
         selectedEntry = entry;
-        console.log(`Lock acquired for entry ${entry.id} by user ${user.userId}`);
         break;
       }
     }
 
-    console.log(`Checked ${entries.length} entries, ${lockedCount} were locked`);
-
     if (!selectedEntry) {
       return NextResponse.json({ 
         entry: null, 
-        message: `All ${entries.length} ${statusFilter.toLowerCase()} entries are currently locked by other users. Please try again in a moment.` 
+        message: `All ${statusFilter.toLowerCase()} entries are currently locked. Please try again.` 
       });
     }
 
-    // Update status to IN_PROGRESS (for tracking, but Redis lock is the source of truth)
+    // Update status to IN_PROGRESS
     const updatedEntry = await prisma.medicineEntry.update({
       where: { id: selectedEntry.id },
       data: {
