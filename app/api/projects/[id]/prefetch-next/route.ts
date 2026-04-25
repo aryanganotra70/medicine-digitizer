@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import axios from 'axios';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,10 +31,11 @@ export async function POST(
       whereClause.status = statusFilter;
     }
 
-    // Get next 3 entries to prefetch
+    // Get next 3 entries to prefetch (skip first one as it's current)
     const entries = await prisma.medicineEntry.findMany({
       where: whereClause,
       orderBy: { createdAt: 'asc' },
+      skip: 1, // Skip the current entry
       take: 3,
       select: {
         medicineName: true,
@@ -46,15 +46,28 @@ export async function POST(
       return NextResponse.json({ prefetched: 0 });
     }
 
-    // Prefetch images for next entries in background (don't await)
-    entries.forEach((entry) => {
+    // Prefetch images for next entries in background
+    const baseUrl = request.nextUrl.origin;
+    const prefetchPromises = entries.map(async (entry) => {
       const query = `${entry.medicineName} buy in India`;
-      // Fire and forget - just trigger the cache
-      fetch(`${request.nextUrl.origin}/api/google-images?q=${encodeURIComponent(query)}&start=0`)
-        .catch(() => {}); // Ignore errors
+      try {
+        // Use absolute URL for server-side fetch
+        const response = await fetch(`${baseUrl}/api/google-images?q=${encodeURIComponent(query)}&start=0`, {
+          method: 'GET',
+          headers: {
+            'Cookie': request.headers.get('cookie') || '', // Pass auth cookies
+          },
+        });
+        console.log(`Prefetched: ${entry.medicineName} - Status: ${response.status}`);
+      } catch (error) {
+        console.error(`Prefetch failed for ${entry.medicineName}:`, error);
+      }
     });
 
-    console.log(`Prefetching images for ${entries.length} upcoming entries`);
+    // Don't await - let them run in background
+    Promise.all(prefetchPromises).catch(() => {});
+
+    console.log(`Started prefetching images for ${entries.length} upcoming entries`);
 
     return NextResponse.json({ prefetched: entries.length });
   } catch (error) {
