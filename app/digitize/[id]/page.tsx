@@ -84,11 +84,7 @@ export default function DigitizePage() {
       fetchGoogleImages(searchQuery);
       fetchAllStatusCounts(); // Update all counts after getting entry
       
-      // Prefetch images for next entries in background while user is working
-      setTimeout(() => {
-        fetch(`/api/projects/${id}/prefetch-next?status=${statusFilter}`, { method: 'POST' })
-          .catch(() => {}); // Ignore errors
-      }, 2000); // Wait 2 seconds to let current images load first
+      // Prefetch disabled due to SSL issues - caching will still help
     } catch (error) {
       console.error('Failed to fetch entry:', error);
       setEntry(null);
