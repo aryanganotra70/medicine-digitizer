@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import axios from 'axios';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,21 +47,25 @@ export async function POST(
       return NextResponse.json({ prefetched: 0 });
     }
 
-    // Prefetch images for next entries in background
+    // Prefetch images for next entries in background using axios
     const baseUrl = request.nextUrl.origin;
     const prefetchPromises = entries.map(async (entry) => {
       const query = `${entry.medicineName} buy in India`;
       try {
-        // Use absolute URL for server-side fetch
-        const response = await fetch(`${baseUrl}/api/google-images?q=${encodeURIComponent(query)}&start=0`, {
-          method: 'GET',
+        // Use axios with proper SSL handling
+        await axios.get(`${baseUrl}/api/google-images`, {
+          params: { q: query, start: 0 },
           headers: {
-            'Cookie': request.headers.get('cookie') || '', // Pass auth cookies
+            'Cookie': request.headers.get('cookie') || '',
           },
+          timeout: 10000, // 10 second timeout
+          httpsAgent: new (require('https').Agent)({
+            rejectUnauthorized: false, // Allow self-signed certs in dev
+          }),
         });
-        console.log(`Prefetched: ${entry.medicineName} - Status: ${response.status}`);
-      } catch (error) {
-        console.error(`Prefetch failed for ${entry.medicineName}:`, error);
+        console.log(`✓ Prefetched: ${entry.medicineName}`);
+      } catch (error: any) {
+        console.error(`✗ Prefetch failed for ${entry.medicineName}:`, error.message);
       }
     });
 
